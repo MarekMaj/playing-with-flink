@@ -1,0 +1,30 @@
+jobmanager:
+    image: mesoshq/flink
+    container_name: jobmanager
+    command: jobmanager
+    net: "host"
+    environment:
+        - HOST=127.0.0.1
+        - PORT0=6123
+        - PORT1=8081
+    ports:
+        - "6123:6123" # czy to potrzebne?
+        - "8081:8081"
+taskmanager:
+    image: mesoshq/flink
+    container_name: taskmanager
+    command: taskmanager
+    net: "host"
+    environment:
+        - flink_jobmanager_rpc_address=127.0.0.1
+        - flink_jobmanager_rpc_port=6123
+        - flink_taskmanager_tmp_dirs=/data/tasks
+        - flink_blob_storage_directory=/data/blobs
+        #- flink_state_backend=filesystem
+        - flink_state_backend=jobmanager
+        - flink_taskmanager_numberOfTaskSlots=1
+        - flink_taskmanager_heap_mb=2048
+        - HOST=127.0.0.1
+        - PORT0=7001
+        - PORT1=7002
+        - PORT2=7003
