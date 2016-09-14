@@ -18,6 +18,12 @@ package com.marekmaj.learn.flink;
  * limitations under the License.
  */
 
+import com.dataartisans.flinktraining.exercises.datastream_java.datatypes.TaxiRide;
+import com.dataartisans.flinktraining.exercises.datastream_java.sources.TaxiRideSource;
+import com.dataartisans.flinktraining.exercises.datastream_java.utils.GeoUtils;
+import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.streaming.api.TimeCharacteristic;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 
@@ -44,30 +50,22 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 public class StreamingJob {
 
 	public static void main(String[] args) throws Exception {
+		String path = ParameterTool.fromArgs(args).getRequired("data");
+
 		// set up the streaming execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		/**
-		 * Here, you can start creating your execution plan for Flink.
-		 *
-		 * Start with getting some data from the environment, like
-		 * 	env.readTextFile(textPath);
-		 *
-		 * then, transform the resulting DataStream<String> using operations
-		 * like
-		 * 	.filter()
-		 * 	.flatMap()
-		 * 	.join()
-		 * 	.coGroup()
-		 *
-		 * and many more.
-		 * Have a look at the programming guide for the Java API:
-		 *
-		 * http://flink.apache.org/docs/latest/apis/streaming/index.html
-		 *
-		 */
+		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-		// execute program
-		env.execute("Flink Streaming Java API Skeleton");
+		DataStream<TaxiRide> rides = env.addSource(
+				new TaxiRideSource(path, 0, 60));
+
+		DataStream<TaxiRide> filtered = rides
+				.filter(taxiRide -> GeoUtils.isInNYC(taxiRide.startLon, taxiRide.startLat))
+				.filter(taxiRide -> GeoUtils.isInNYC(taxiRide.endLon, taxiRide.endLat));
+
+		filtered.print();
+
+		env.execute("Flink Streaming API Taxi example");
 	}
 }

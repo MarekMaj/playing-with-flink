@@ -87,6 +87,13 @@ under the License.
 			<artifactId>flink-clients_2.10</artifactId>
 			<version>${flink.version}</version>
 		</dependency>
+
+		<!-- some utility clasees https://github.com/dataArtisans/flink-training-exercises.git -->
+		<dependency>
+			<groupId>com.dataartisans</groupId>
+			<artifactId>flink-training-exercises</artifactId>
+			<version>0.5</version>
+		</dependency>
 	</dependencies>
 
 	<profiles>
