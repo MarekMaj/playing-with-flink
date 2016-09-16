@@ -26,7 +26,7 @@ public class DataToKafkaJob {
                 .filter(taxiRide -> GeoUtils.isInNYC(taxiRide.startLon, taxiRide.startLat))
                 .filter(taxiRide -> GeoUtils.isInNYC(taxiRide.endLon, taxiRide.endLat));
 
-        filtered.addSink(new FlinkKafkaProducer09<>(KafkaProps.broker, KafkaProps.topic, new TaxiRideSchema()));
+        filtered.addSink(new FlinkKafkaProducer09<>(KafkaProps.broker, KafkaProps.inputTopic, new TaxiRideSchema()));
 
         env.execute("Flink to Kafka data producer");
     }

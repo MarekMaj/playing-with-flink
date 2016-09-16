@@ -14,3 +14,4 @@ Flink training by dataartisans
 4. Show logs
 `docker exec -it taskmanager tail -f /usr/local/flink/log/flink--taskmanager-*.out`
 `docker exec -it kafka bash /opt/kafka_2.11-0.10.0.1/bin/kafka-console-consumer.sh --zookeeper zookeeper:2181 --topic taxiRides`
+`docker exec -it kafka bash /opt/kafka_2.11-0.10.0.1/bin/kafka-console-consumer.sh --zookeeper zookeeper:2181 --topic popularPlaces`

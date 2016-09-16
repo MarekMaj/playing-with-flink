@@ -1,8 +1,9 @@
-package com.marekmaj.learn.flink;
+package com.marekmaj.learn.flink.kafka;
 
 import com.dataartisans.flinktraining.exercises.datastream_java.datatypes.TaxiRide;
-import com.dataartisans.flinktraining.exercises.datastream_java.sources.TaxiRideSource;
 import com.dataartisans.flinktraining.exercises.datastream_java.utils.GeoUtils;
+import com.dataartisans.flinktraining.exercises.datastream_java.utils.TaxiRideSchema;
+import com.marekmaj.learn.flink.CountTaxiRidesWindowFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -11,10 +12,10 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 
-
-public class TimeWindowAggregationJob {
-
+public class DataFromKafkaJob {
 
     public static void main(String[] args) throws Exception {
         String path = ParameterTool.fromArgs(args).getRequired("data");
@@ -22,32 +23,28 @@ public class TimeWindowAggregationJob {
 
         // set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-        // we will be aggregating every 15minutes so
-        DataStream<TaxiRide> rides = env.addSource(new TaxiRideSource(path, 15, 60));
+        // read from kafka
+        DataStream<TaxiRide> rides = env.addSource(new FlinkKafkaConsumer09<>(KafkaProps.inputTopic, new TaxiRideSchema(), KafkaProps.consumerProperties()));
 
-        // najpierw chcemy pogrupowac po area id oddzielnie starty i zakonczenia kursów
+
         KeyedStream<TaxiRide, Tuple2<Boolean, Integer>> ridesGrouped = rides.keyBy(taxiRide -> new Tuple2<>(taxiRide.isStart,
                 taxiRide.isStart ?
                         GeoUtils.mapToGridCell(taxiRide.startLon, taxiRide.startLat) :
                         GeoUtils.mapToGridCell(taxiRide.endLon, taxiRide.endLat))
         );
-
-        // teraz chcemy zagregowac w 15minutowe okna co 5minut i zliczyc kursy
-        DataStream<Tuple5<Float, Float, Long, Boolean, Integer>> result = ridesGrouped
+        DataStream<Tuple5<Float, Float, Long, Boolean, Integer>> filtered = ridesGrouped
                 .timeWindow(Time.minutes(15), Time.minutes(5))
                 .apply(new CountTaxiRidesWindowFunction());
-        // TODO powyzszy sposob jest slaby bo bedziemy trzymac w pamieci wszystkie eventy! z okna a chcemy tak naprawde chcemy sume
-        // TODO to niestety nie dziala bo w apply z fold i initial value typ Collectora jest taki jak initial value i to sie robi bez sensu
-/*        DataStream<Tuple5<Float, Float, Long, Boolean, Integer>> result = ridesGrouped
-                .timeWindow(Time.minutes(15), Time.minutes(5))
-                .apply(0, (FoldFunction<TaxiRide, Integer>) (acc, taxiRide) -> acc + 1, windowFunctionForIncrementalAggregation());*/
 
-        result.filter(resultTuple -> resultTuple.f4 > popularityThreshold).print();
+        DataStream<PopularPlace> result = filtered
+                .map(tuple -> PopularPlace.from(tuple))
+                .filter(place -> place.count > popularityThreshold);
 
-        env.execute("Flink Streaming API Window example");
+        result.addSink(new FlinkKafkaProducer09<>(KafkaProps.broker, KafkaProps.outputTopic, new PopularPlaceSchema()));
+
+        env.execute("Flink from kafka consumer");
     }
 
 }
