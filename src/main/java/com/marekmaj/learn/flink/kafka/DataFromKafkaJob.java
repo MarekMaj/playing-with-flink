@@ -16,6 +16,8 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 
 public class DataFromKafkaJob {
 
+    public static final String RESULT_DATA_TOPIC = "popularPlaces";
+
     public static void main(String[] args) throws Exception {
         int popularityThreshold = 30;
 
@@ -25,7 +27,7 @@ public class DataFromKafkaJob {
 
 
         // read from kafka
-        DataStream<TaxiRide> rides = env.addSource(new FlinkKafkaConsumer09<>(KafkaProps.inputTopic, new TaxiRideSchema(), KafkaProps.consumerProperties()))
+        DataStream<TaxiRide> rides = env.addSource(new FlinkKafkaConsumer09<>(DataFromKafkaJob.RESULT_DATA_TOPIC, new TaxiRideSchema(), KafkaProps.consumerProperties()))
                 .assignTimestampsAndWatermarks(new TaxiRideTimestampExtractor(Time.seconds(DataToKafkaJob.MAX_DELAY_IN_SECONDS)));
 
 
@@ -42,7 +44,7 @@ public class DataFromKafkaJob {
                 .map(tuple -> PopularPlace.from(tuple))
                 .filter(place -> place.count > popularityThreshold);
 
-        result.addSink(new FlinkKafkaProducer09<>(KafkaProps.broker, KafkaProps.outputTopic, new PopularPlaceSchema()));
+        result.addSink(new FlinkKafkaProducer09<>(KafkaProps.broker, RESULT_DATA_TOPIC, new PopularPlaceSchema()));
 
         env.execute("Flink from kafka consumer");
     }

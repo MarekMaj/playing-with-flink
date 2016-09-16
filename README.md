@@ -5,7 +5,7 @@ Flink training by dataartisans
 1. Download data 
 `wget http://dataartisans.github.io/flink-training/trainingData/nycTaxiRides.gz`
 
-2. Run flink locally
+2. Run whole environment locally
 `docker-compose up`
 
 3. Code, build and deploy job

@@ -14,6 +14,7 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 public class DataToKafkaJob {
 
     public static final int MAX_DELAY_IN_SECONDS = 15;
+    public static final String INPUT_DATA_TOPIC = "taxiRides";
 
     public static void main(String[] args) throws Exception {
         String path = ParameterTool.fromArgs(args).getRequired("data");
@@ -28,7 +29,7 @@ public class DataToKafkaJob {
                 .filter(taxiRide -> GeoUtils.isInNYC(taxiRide.startLon, taxiRide.startLat))
                 .filter(taxiRide -> GeoUtils.isInNYC(taxiRide.endLon, taxiRide.endLat));
 
-        filtered.addSink(new FlinkKafkaProducer09<>(KafkaProps.broker, KafkaProps.inputTopic, new TaxiRideSchema()));
+        filtered.addSink(new FlinkKafkaProducer09<>(KafkaProps.broker, INPUT_DATA_TOPIC, new TaxiRideSchema()));
 
         env.execute("Flink to Kafka data producer");
     }
