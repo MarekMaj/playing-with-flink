@@ -22,7 +22,7 @@ services:
         - flink_blob_storage_directory=/data/blobs
         #- flink_state_backend=filesystem
         - flink_state_backend=jobmanager
-        - flink_taskmanager_numberOfTaskSlots=1
+        - flink_taskmanager_numberOfTaskSlots=5
         - flink_taskmanager_heap_mb=2048
         - HOST=taskmanager
         - PORT0=7001

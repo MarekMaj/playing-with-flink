@@ -13,6 +13,8 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 
 public class DataToKafkaJob {
 
+    public static final int MAX_DELAY_IN_SECONDS = 15;
+
     public static void main(String[] args) throws Exception {
         String path = ParameterTool.fromArgs(args).getRequired("data");
 
@@ -20,7 +22,7 @@ public class DataToKafkaJob {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-        DataStream<TaxiRide> rides = env.addSource(new TaxiRideSource(path, 0, 60));
+        DataStream<TaxiRide> rides = env.addSource(new TaxiRideSource(path, MAX_DELAY_IN_SECONDS, 600));
 
         DataStream<TaxiRide> filtered = rides
                 .filter(taxiRide -> GeoUtils.isInNYC(taxiRide.startLon, taxiRide.startLat))
