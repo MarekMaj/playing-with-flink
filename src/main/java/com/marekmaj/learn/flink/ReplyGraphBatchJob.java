@@ -1,6 +1,5 @@
 package com.marekmaj.learn.flink;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -29,11 +28,8 @@ public class ReplyGraphBatchJob {
                         .types(String.class, String.class, String.class);
 
         DataSet<Tuple3<String, String, String>> cleansed = inputData
-                .map(data -> Tuple3.of(data.f0,
-                        StringUtils.substringBeforeLast(
-                                StringUtils.substringAfterLast(data.f1, "<"), ">"),
-                        data.f2))
-                .filter(data -> !"git@git.apache.org".equals(data.f1) && !"jira@apache.org".equals(data.f1));
+                .map(data -> Tuple3.of(data.f0, EmailsDataUtils.clearEmailAddress(data.f1), data.f2))
+                .filter(data -> EmailsDataUtils.isSenderNotABot(data.f1));
 
         cleansed
                 .join(cleansed).where(i1 -> i1.f2).equalTo(i2 -> i2.f0)    //reply-to == msg-id
@@ -44,7 +40,6 @@ public class ReplyGraphBatchJob {
     }
 
     private static class CountRepliessReduceFunction implements GroupReduceFunction<Tuple2<String, String>, Tuple3<String, String, Long>> {
-
         @Override
         public void reduce(Iterable<Tuple2<String, String>> values, Collector<Tuple3<String, String, Long>> out) throws Exception {
             Tuple3<String, String, Long> result = StreamSupport.stream(values.spliterator(), false)

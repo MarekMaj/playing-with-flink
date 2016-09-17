@@ -26,9 +26,6 @@ import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.util.Collector;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -68,26 +65,9 @@ public class BatchJob {
                         .types(String.class, String.class);
 
         inputData
-                .map(input -> Tuple2.of(MonthFromStringTimestamp.from(input.f0), input.f1))
+                .map(input -> Tuple2.of(EmailsDataUtils.MonthFromStringTimestamp.from(input.f0), input.f1))
                 .groupBy(0, 1)
                 .reduceGroup(new CountEmailsReduceFunction()).print();
-    }
-
-    private static final class MonthFromStringTimestamp {
-
-        private static final DateTimeFormatter INPUT_DATE_TIME_FORMATTER =
-                new DateTimeFormatterBuilder()
-                        .appendPattern("yyyy-MM-dd-HH:mm:ss")
-                        .toFormatter();
-
-        private static final DateTimeFormatter OUTPUT_DATE_TIME_FORMATTER =
-                new DateTimeFormatterBuilder()
-                        .appendPattern("yyyy-MM")
-                        .toFormatter();
-
-        public static String from(String timestamp) {
-            return LocalDate.parse(timestamp, INPUT_DATE_TIME_FORMATTER).format(OUTPUT_DATE_TIME_FORMATTER);
-        }
     }
 
     private static class CountEmailsReduceFunction implements GroupReduceFunction<Tuple2<String, String>, Tuple3<String, String, Long>> {
