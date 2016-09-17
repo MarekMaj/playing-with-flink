@@ -18,7 +18,19 @@ package com.marekmaj.learn.flink;
  * limitations under the License.
  */
 
+import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.util.Collector;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Skeleton for a Flink Batch Job.
@@ -42,35 +54,54 @@ import org.apache.flink.api.java.ExecutionEnvironment;
  */
 public class BatchJob {
 
-	public static void main(String[] args) throws Exception {
-		// set up the batch execution environment
-		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+    public static void main(String[] args) throws Exception {
+        String path = ParameterTool.fromArgs(args).getRequired("data");
+        // set up the batch execution environment
+        final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-		/**
-		 * Here, you can start creating your execution plan for Flink.
-		 *
-		 * Start with getting some data from the environment, like
-		 * 	env.readTextFile(textPath);
-		 *
-		 * then, transform the resulting DataSet<String> using operations
-		 * like
-		 * 	.filter()
-		 * 	.flatMap()
-		 * 	.join()
-		 * 	.coGroup()
-		 *
-		 * and many more.
-		 * Have a look at the programming guide for the Java API:
-		 *
-		 * http://flink.apache.org/docs/latest/apis/batch/index.html
-		 *
-		 * and the examples
-		 *
-		 * http://flink.apache.org/docs/latest/apis/batch/examples.html
-		 *
-		 */
+        // read timestamp and sender fields only
+        DataSet<Tuple2<String, String>> inputData =
+                env.readCsvFile(path)
+                        .lineDelimiter("##//##")
+                        .fieldDelimiter("#|#")
+                        .includeFields("01100")
+                        .types(String.class, String.class);
 
-		// execute program
-		env.execute("Flink Batch Java API Skeleton");
-	}
+        inputData
+                .map(input -> Tuple2.of(MonthFromStringTimestamp.from(input.f0), input.f1))
+                .groupBy(0, 1)
+                .reduceGroup(new CountEmailsReduceFunction()).print();
+    }
+
+    private static final class MonthFromStringTimestamp {
+
+        private static final DateTimeFormatter INPUT_DATE_TIME_FORMATTER =
+                new DateTimeFormatterBuilder()
+                        .appendPattern("yyyy-MM-dd-HH:mm:ss")
+                        .toFormatter();
+
+        private static final DateTimeFormatter OUTPUT_DATE_TIME_FORMATTER =
+                new DateTimeFormatterBuilder()
+                        .appendPattern("yyyy-MM")
+                        .toFormatter();
+
+        public static String from(String timestamp) {
+            return LocalDate.parse(timestamp, INPUT_DATE_TIME_FORMATTER).format(OUTPUT_DATE_TIME_FORMATTER);
+        }
+    }
+
+    private static class CountEmailsReduceFunction implements GroupReduceFunction<Tuple2<String, String>, Tuple3<String, String, Long>> {
+
+        @Override
+        public void reduce(Iterable<Tuple2<String, String>> values, Collector<Tuple3<String, String, Long>> out) throws Exception {
+            Tuple3<String, String, Long> result = StreamSupport.stream(values.spliterator(), false)
+                    // eh...
+                    .collect(Collectors.reducing(
+                            Tuple3.of("", "", 0L),
+                            t -> Tuple3.of(t.f0, t.f1, 1L),
+                            (u, u2) -> Tuple3.of(u2.f0, u2.f1, u.f2 + u2.f2)));
+
+            out.collect(result);
+        }
+    }
 }
